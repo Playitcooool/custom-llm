@@ -21,12 +21,28 @@ def train_cfg(data: dict) -> dict:
     return data.get("train", {})
 
 
-def device() -> torch.device:
+def resolve_device(name: str = "auto") -> torch.device:
+    if name == "auto":
+        return auto_device()
+    dev = torch.device(name)
+    if dev.type == "cuda" and not torch.cuda.is_available():
+        raise ValueError("CUDA was requested, but torch.cuda.is_available() is false")
+    if dev.type == "mps":
+        if not hasattr(torch.backends, "mps") or not torch.backends.mps.is_available():
+            raise ValueError("MPS was requested, but torch.backends.mps.is_available() is false")
+    return dev
+
+
+def auto_device() -> torch.device:
     if torch.cuda.is_available():
         return torch.device("cuda")
     if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
         return torch.device("mps")
     return torch.device("cpu")
+
+
+def device() -> torch.device:
+    return auto_device()
 
 
 def optimization_step(model, batch, optimizer, dev):

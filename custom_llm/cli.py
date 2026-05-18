@@ -16,7 +16,7 @@ from custom_llm.model.model import TinyGemmaLM
 from custom_llm.train.distill import run_distill
 from custom_llm.train.pretrain import run_pretrain
 from custom_llm.train.sft import run_sft
-from custom_llm.train.utils import load_config, tiny_config_from_dict
+from custom_llm.train.utils import load_config, resolve_device, tiny_config_from_dict
 
 CHECKPOINT_EXTENSIONS = {
     "pretrain": ".safetensors",
@@ -65,6 +65,7 @@ def main() -> None:
         p.add_argument("--config", default="configs/tiny.yaml")
         p.add_argument("--tokenizer", required=True)
         p.add_argument("--out", default=None)
+        p.add_argument("--device", default="auto", choices=("auto", "cpu", "mps", "cuda"))
         if name == "pretrain":
             p.add_argument("--text", nargs="+", required=True)
         elif name == "sft":
@@ -78,6 +79,7 @@ def main() -> None:
     sample.add_argument("--checkpoint", default=None)
     sample.add_argument("--prompt", required=True)
     sample.add_argument("--max-new-tokens", type=int, default=32)
+    sample.add_argument("--device", default="auto", choices=("auto", "cpu", "mps", "cuda"))
 
     args = parser.parse_args()
     if args.cmd == "train-tokenizer":
@@ -98,22 +100,38 @@ def main() -> None:
         )
         print(out)
     elif args.cmd == "pretrain":
-        run_pretrain(load_config(args.config), args.text, args.tokenizer, checkpoint_output_path(args.cmd, args.out))
+        run_pretrain(
+            load_config(args.config),
+            args.text,
+            args.tokenizer,
+            checkpoint_output_path(args.cmd, args.out),
+            args.device,
+        )
     elif args.cmd == "sft":
-        run_sft(load_config(args.config), args.jsonl, args.tokenizer, checkpoint_output_path(args.cmd, args.out))
+        run_sft(
+            load_config(args.config),
+            args.jsonl,
+            args.tokenizer,
+            checkpoint_output_path(args.cmd, args.out),
+            args.device,
+        )
     elif args.cmd == "distill":
         run_distill(
             load_config(args.config),
             args.prompts,
             args.tokenizer,
             checkpoint_output_path(args.cmd, args.out),
+            args.device,
         )
     elif args.cmd == "sample":
         cfg = tiny_config_from_dict(load_config(args.config))
         tokenizer = load_tokenizer(args.tokenizer)
         cfg.vocab_size = max(cfg.vocab_size, tokenizer.get_vocab_size())
+        dev = resolve_device(args.device)
+        print(f"device: {dev}")
         model = load_checkpoint(args.checkpoint, cfg) if args.checkpoint else TinyGemmaLM(cfg)
-        ids = torch.tensor([encode(tokenizer, args.prompt, add_eos=False)])
+        model = model.to(dev)
+        ids = torch.tensor([encode(tokenizer, args.prompt, add_eos=False)], device=dev)
         out = generate(model, ids, args.max_new_tokens)
         print(decode(tokenizer, out[0].tolist()))
 

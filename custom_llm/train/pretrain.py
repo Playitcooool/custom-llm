@@ -7,13 +7,20 @@ from custom_llm.data.datasets import PackedTextDataset
 from custom_llm.data.tokenizer import load_tokenizer
 from custom_llm.model.checkpoints import save_checkpoint
 from custom_llm.model.model import TinyGemmaLM
-from custom_llm.train.utils import device, optimization_step, tiny_config_from_dict, train_cfg
+from custom_llm.train.utils import optimization_step, resolve_device, tiny_config_from_dict, train_cfg
 
 
-def run_pretrain(config: dict, text_files: list[str], tokenizer_path: str, out: str | None = None) -> TinyGemmaLM:
+def run_pretrain(
+    config: dict,
+    text_files: list[str],
+    tokenizer_path: str,
+    out: str | None = None,
+    device_name: str = "auto",
+) -> TinyGemmaLM:
     cfg = tiny_config_from_dict(config)
     tcfg = train_cfg(config)
-    dev = device()
+    dev = resolve_device(device_name)
+    print(f"device: {dev}")
     tokenizer = load_tokenizer(tokenizer_path)
     cfg.vocab_size = max(cfg.vocab_size, tokenizer.get_vocab_size())
     ds = PackedTextDataset(text_files, tokenizer, tcfg.get("seq_len", min(128, cfg.max_seq_len)))

@@ -14,6 +14,8 @@ uv run custom-llm distill --config configs/smoke.yaml --tokenizer .artifacts/tok
 uv run custom-llm sample --config configs/smoke.yaml --tokenizer .artifacts/tokenizer --checkpoint .artifacts/sft.safetensors --prompt "Tiny models"
 ```
 
+Training and sampling use `--device auto` by default. Auto picks CUDA first, then Apple MPS, then CPU. Override it with `--device mps` or `--device cpu` when needed.
+
 ## FineWeb-Edu Training
 
 FineWeb-Edu is the recommended first realistic dataset for this model. It is educational web text filtered from FineWeb and is much closer to real pretraining data than TinyStories. Prepare a bounded local sample, train a tokenizer on it, then pretrain from the resulting text file:

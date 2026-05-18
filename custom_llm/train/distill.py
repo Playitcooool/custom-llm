@@ -6,7 +6,13 @@ from custom_llm.teachers.mock import MockTeacher
 from custom_llm.train.sft import run_sft
 
 
-def run_distill(config: dict, prompts_file: str, tokenizer_path: str, out: str | None = None):
+def run_distill(
+    config: dict,
+    prompts_file: str,
+    tokenizer_path: str,
+    out: str | None = None,
+    device_name: str = "auto",
+):
     teacher = MockTeacher()
     tmp = Path(".distill_teacher_data.jsonl")
     rows = []
@@ -15,6 +21,6 @@ def run_distill(config: dict, prompts_file: str, tokenizer_path: str, out: str |
             rows.append({"prompt": prompt, "response": teacher.answer(chat_template(prompt))})
     tmp.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
     try:
-        return run_sft(config, str(tmp), tokenizer_path, out)
+        return run_sft(config, str(tmp), tokenizer_path, out, device_name)
     finally:
         tmp.unlink(missing_ok=True)
