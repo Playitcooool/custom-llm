@@ -5,6 +5,7 @@ import torch
 
 from custom_llm.data.collate import causal_lm_collate
 from custom_llm.data.datasets import SFTDataset
+from custom_llm.data.fineweb_edu import write_text_rows
 from custom_llm.data.tinystories import extract_text_sample, is_gzip
 from custom_llm.data.tokenizer import load_tokenizer, train_tokenizer
 from custom_llm.train.distill import run_distill
@@ -63,6 +64,19 @@ def test_tinystories_rejects_lfs_pointer(tmp_path):
     pointer = tmp_path / "pointer.tar.gz"
     pointer.write_text("version https://git-lfs.github.com/spec/v1\n")
     assert not is_gzip(pointer)
+
+
+def test_fineweb_edu_writes_bounded_text_sample(tmp_path):
+    rows = [
+        {"text": "short"},
+        {"text": "Photosynthesis turns sunlight into plant energy. " * 20},
+        {"text": "A second educational web document explains gravity. " * 20},
+    ]
+    out = write_text_rows(rows, tmp_path / "fineweb.txt", max_bytes=256, min_chars=100)
+    text = out.read_text()
+    assert "Photosynthesis" in text
+    assert "short" not in text
+    assert out.stat().st_size == 256
 
 
 def test_sft_masks_prompt_loss(tmp_path):

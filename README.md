@@ -14,15 +14,15 @@ uv run custom-llm distill --config configs/smoke.yaml --tokenizer .artifacts/tok
 uv run custom-llm sample --config configs/smoke.yaml --tokenizer .artifacts/tokenizer --checkpoint .artifacts/sft.safetensors --prompt "Tiny models"
 ```
 
-## TinyStories Training
+## FineWeb-Edu Training
 
-TinyStories is the recommended first real dataset for this model. Prepare a bounded local sample, train a tokenizer on it, then pretrain from the resulting text file:
+FineWeb-Edu is the recommended first realistic dataset for this model. It is educational web text filtered from FineWeb and is much closer to real pretraining data than TinyStories. Prepare a bounded local sample, train a tokenizer on it, then pretrain from the resulting text file:
 
 ```bash
-uv run custom-llm prepare-tinystories --out data/tinystories_100mb.txt --max-mb 100
-uv run custom-llm train-tokenizer --files data/tinystories_100mb.txt --out .artifacts/tokenizer --vocab-size 4096
-uv run custom-llm pretrain --config configs/tiny.yaml --tokenizer .artifacts/tokenizer --text data/tinystories_100mb.txt --out .artifacts/tinystories.safetensors
-uv run custom-llm sample --config configs/tiny.yaml --tokenizer .artifacts/tokenizer --checkpoint .artifacts/tinystories.safetensors --prompt "Once upon a time"
+uv run custom-llm prepare-fineweb-edu --out data/fineweb_edu_100mb.txt --max-mb 100
+uv run custom-llm train-tokenizer --files data/fineweb_edu_100mb.txt --out .artifacts/tokenizer --vocab-size 4096
+uv run custom-llm pretrain --config configs/tiny.yaml --tokenizer .artifacts/tokenizer --text data/fineweb_edu_100mb.txt --out .artifacts/fineweb_edu.safetensors
+uv run custom-llm sample --config configs/tiny.yaml --tokenizer .artifacts/tokenizer --checkpoint .artifacts/fineweb_edu.safetensors --prompt "Explain photosynthesis in simple terms:"
 ```
 
 Start with `--max-mb 100` to validate the pipeline. On a 24 GB Mac, increase toward `500-2000` MB once the run is stable.

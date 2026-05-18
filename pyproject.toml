@@ -5,6 +5,7 @@ description = "A tiny educational Gemma-style text LLM with pretraining, SFT, an
 readme = "README.md"
 requires-python = ">=3.10,<3.12"
 dependencies = [
+  "datasets>=2.19,<4",
   "numpy>=1.26,<2",
   "pyyaml>=6.0",
   "safetensors>=0.4",

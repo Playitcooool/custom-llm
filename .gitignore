@@ -2,6 +2,6 @@
 .distill_teacher_data.jsonl
 .pytest_cache/
 .venv/
-data/
+/data/
 __pycache__/
 *.py[cod]

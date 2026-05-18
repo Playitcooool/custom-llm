@@ -4,6 +4,11 @@ from pathlib import Path
 import torch
 
 from custom_llm.data.tokenizer import decode, encode, load_tokenizer, train_tokenizer
+from custom_llm.data.fineweb_edu import (
+    FINEWEB_EDU_CONFIG,
+    FINEWEB_EDU_DATASET,
+    prepare_fineweb_edu,
+)
 from custom_llm.data.tinystories import TINYSTORIES_URL, prepare_tinystories
 from custom_llm.model.checkpoints import load_checkpoint
 from custom_llm.model.generation import generate
@@ -45,6 +50,16 @@ def main() -> None:
     tiny.add_argument("--max-mb", type=int, default=100)
     tiny.add_argument("--url", default=TINYSTORIES_URL)
 
+    fineweb = sub.add_parser("prepare-fineweb-edu")
+    fineweb.add_argument("--out", default="data/fineweb_edu_100mb.txt")
+    fineweb.add_argument("--max-mb", type=int, default=100)
+    fineweb.add_argument("--dataset", default=FINEWEB_EDU_DATASET)
+    fineweb.add_argument("--name", default=FINEWEB_EDU_CONFIG)
+    fineweb.add_argument("--split", default="train")
+    fineweb.add_argument("--text-field", default="text")
+    fineweb.add_argument("--min-chars", type=int, default=200)
+    fineweb.add_argument("--max-docs", type=int, default=None)
+
     for name in ("pretrain", "sft", "distill"):
         p = sub.add_parser(name)
         p.add_argument("--config", default="configs/tiny.yaml")
@@ -69,6 +84,18 @@ def main() -> None:
         train_tokenizer(args.files, args.out, args.vocab_size)
     elif args.cmd == "prepare-tinystories":
         out = prepare_tinystories(args.out, args.cache_dir, args.max_mb, args.url)
+        print(out)
+    elif args.cmd == "prepare-fineweb-edu":
+        out = prepare_fineweb_edu(
+            out_file=args.out,
+            max_mb=args.max_mb,
+            dataset=args.dataset,
+            name=args.name,
+            split=args.split,
+            text_field=args.text_field,
+            min_chars=args.min_chars,
+            max_docs=args.max_docs,
+        )
         print(out)
     elif args.cmd == "pretrain":
         run_pretrain(load_config(args.config), args.text, args.tokenizer, checkpoint_output_path(args.cmd, args.out))
