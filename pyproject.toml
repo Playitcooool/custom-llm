@@ -1,0 +1,34 @@
+[project]
+name = "custom-llm"
+version = "0.1.0"
+description = "A tiny educational Gemma-style text LLM with pretraining, SFT, and offline distillation."
+readme = "README.md"
+requires-python = ">=3.10,<3.12"
+dependencies = [
+  "numpy>=1.26,<2",
+  "pyyaml>=6.0",
+  "safetensors>=0.4",
+  "tokenizers>=0.15",
+  "torch>=2.2,<2.3",
+  "tqdm>=4.66",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.4"]
+teachers = ["huggingface-hub>=0.23", "openai>=1.30"]
+wandb = ["wandb>=0.17"]
+
+[project.scripts]
+custom-llm = "custom_llm.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

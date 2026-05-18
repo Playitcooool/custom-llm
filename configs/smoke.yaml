@@ -1,0 +1,17 @@
+model:
+  vocab_size: 128
+  n_layers: 2
+  d_model: 32
+  n_heads: 4
+  n_kv_heads: 2
+  intermediate_dim: 64
+  max_seq_len: 32
+  sliding_window: 8
+  local_layers_per_global: 2
+  ple_dim: 8
+  use_ple: true
+train:
+  seq_len: 16
+  batch_size: 1
+  steps: 1
+  lr: 0.001

@@ -1,0 +1,2 @@
+{"prompt":"What is this project?","response":"It is a tiny educational language model repository."}
+{"prompt":"Name one architecture feature.","response":"It uses grouped-query attention with RoPE and RMSNorm."}
