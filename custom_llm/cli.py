@@ -1,4 +1,5 @@
 import argparse
+from pathlib import Path
 
 import torch
 
@@ -11,6 +12,22 @@ from custom_llm.train.distill import run_distill
 from custom_llm.train.pretrain import run_pretrain
 from custom_llm.train.sft import run_sft
 from custom_llm.train.utils import load_config, tiny_config_from_dict
+
+CHECKPOINT_EXTENSIONS = {
+    "pretrain": ".safetensors",
+    "sft": ".safetensors",
+    "distill": ".safetensors",
+}
+
+
+def checkpoint_output_path(stage: str, out: str | None) -> str:
+    expected = CHECKPOINT_EXTENSIONS[stage]
+    path = Path(out) if out else Path(".artifacts") / f"{stage}{expected}"
+    if path.suffix in {".safetensor", ".safetensors"} and path.suffix != expected:
+        path = path.with_suffix(expected)
+    elif path.suffix == "":
+        path = path.with_suffix(expected)
+    return str(path)
 
 
 def main() -> None:
@@ -54,11 +71,16 @@ def main() -> None:
         out = prepare_tinystories(args.out, args.cache_dir, args.max_mb, args.url)
         print(out)
     elif args.cmd == "pretrain":
-        run_pretrain(load_config(args.config), args.text, args.tokenizer, args.out)
+        run_pretrain(load_config(args.config), args.text, args.tokenizer, checkpoint_output_path(args.cmd, args.out))
     elif args.cmd == "sft":
-        run_sft(load_config(args.config), args.jsonl, args.tokenizer, args.out)
+        run_sft(load_config(args.config), args.jsonl, args.tokenizer, checkpoint_output_path(args.cmd, args.out))
     elif args.cmd == "distill":
-        run_distill(load_config(args.config), args.prompts, args.tokenizer, args.out)
+        run_distill(
+            load_config(args.config),
+            args.prompts,
+            args.tokenizer,
+            checkpoint_output_path(args.cmd, args.out),
+        )
     elif args.cmd == "sample":
         cfg = tiny_config_from_dict(load_config(args.config))
         tokenizer = load_tokenizer(args.tokenizer)
