@@ -1,6 +1,6 @@
 import torch
 
-from custom_llm.model.attention import build_causal_mask, repeat_kv
+from custom_llm.model.attention import GroupedQueryAttention, build_causal_mask, repeat_kv
 from custom_llm.model.config import TinyConfig
 from custom_llm.model.model import TinyGemmaLM
 
@@ -51,6 +51,16 @@ def test_gqa_kv_repetition():
     assert torch.equal(y[:, 0], x[:, 0])
     assert torch.equal(y[:, 1], x[:, 0])
     assert torch.equal(y[:, 2], x[:, 1])
+
+
+def test_grouped_query_attention_uses_fewer_kv_heads():
+    cfg = small_cfg(n_heads=4, n_kv_heads=2)
+    attn = GroupedQueryAttention(cfg, layer_idx=0)
+    assert attn.n_kv_groups == 2
+    assert attn.q_proj.out_features == cfg.n_heads * cfg.head_dim
+    assert attn.k_proj.out_features == cfg.n_kv_heads * cfg.head_dim
+    assert attn.v_proj.out_features == cfg.n_kv_heads * cfg.head_dim
+    assert attn.k_proj.out_features < attn.q_proj.out_features
 
 
 def test_model_forward_and_ple_toggle():

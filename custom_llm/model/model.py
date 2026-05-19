@@ -2,7 +2,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
-from custom_llm.model.attention import Attention, RMSNorm
+from custom_llm.model.attention import GroupedQueryAttention, RMSNorm
 from custom_llm.model.config import TinyConfig
 
 
@@ -21,7 +21,7 @@ class Block(nn.Module):
     def __init__(self, cfg: TinyConfig, layer_idx: int):
         super().__init__()
         self.input_norm = RMSNorm(cfg.d_model, cfg.rms_norm_eps)
-        self.attn = Attention(cfg, layer_idx)
+        self.attn = GroupedQueryAttention(cfg, layer_idx)
         self.post_norm = RMSNorm(cfg.d_model, cfg.rms_norm_eps)
         self.mlp = MLP(cfg)
 

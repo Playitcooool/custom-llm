@@ -46,14 +46,17 @@ def apply_rope(x: torch.Tensor, theta: float = 10_000.0) -> torch.Tensor:
     return torch.stack((x1 * cos - x2 * sin, x1 * sin + x2 * cos), dim=-1).flatten(-2)
 
 
-class Attention(nn.Module):
+class GroupedQueryAttention(nn.Module):
     def __init__(self, cfg: TinyConfig, layer_idx: int):
         super().__init__()
-        assert cfg.d_model % cfg.n_heads == 0
-        assert cfg.n_heads % cfg.n_kv_heads == 0
+        if cfg.d_model % cfg.n_heads != 0:
+            raise ValueError("d_model must be divisible by n_heads")
+        if cfg.n_heads % cfg.n_kv_heads != 0:
+            raise ValueError("n_heads must be divisible by n_kv_heads for grouped-query attention")
         self.cfg = cfg
         self.layer_idx = layer_idx
         self.is_global = cfg.is_global_layer(layer_idx)
+        self.n_kv_groups = cfg.n_heads // cfg.n_kv_heads
         self.q_proj = nn.Linear(cfg.d_model, cfg.n_heads * cfg.head_dim, bias=False)
         self.k_proj = nn.Linear(cfg.d_model, cfg.n_kv_heads * cfg.head_dim, bias=False)
         self.v_proj = nn.Linear(cfg.d_model, cfg.n_kv_heads * cfg.head_dim, bias=False)
@@ -69,8 +72,8 @@ class Attention(nn.Module):
         v = self.v_proj(x).view(bsz, seq_len, self.cfg.n_kv_heads, self.cfg.head_dim).transpose(1, 2)
         q = apply_rope(self.q_norm(q), self.cfg.rope_theta)
         k = apply_rope(self.k_norm(k), self.cfg.rope_theta)
-        k = repeat_kv(k, self.cfg.n_heads // self.cfg.n_kv_heads)
-        v = repeat_kv(v, self.cfg.n_heads // self.cfg.n_kv_heads)
+        k = repeat_kv(k, self.n_kv_groups)
+        v = repeat_kv(v, self.n_kv_groups)
         window = None if self.is_global else self.cfg.sliding_window
         mask = build_causal_mask(seq_len, x.device, window)
         scores = (q @ k.transpose(-2, -1)) / math.sqrt(self.cfg.head_dim)
@@ -79,3 +82,6 @@ class Attention(nn.Module):
         out = probs @ v
         out = out.transpose(1, 2).contiguous().view(bsz, seq_len, self.cfg.d_model)
         return self.o_proj(out)
+
+
+Attention = GroupedQueryAttention
