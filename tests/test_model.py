@@ -2,6 +2,7 @@ import torch
 
 from custom_llm.model.attention import GroupedQueryAttention, build_causal_mask, repeat_kv
 from custom_llm.model.config import TinyConfig
+from custom_llm.model.generation import generate
 from custom_llm.model.model import TinyGemmaLM
 
 
@@ -72,3 +73,27 @@ def test_model_forward_and_ple_toggle():
     assert out["loss"].ndim == 0
     no_ple = TinyGemmaLM(small_cfg(use_ple=False))
     assert no_ple.ple is None
+
+
+def test_generate_suppresses_token_ids():
+    cfg = small_cfg(vocab_size=8)
+    model = TinyGemmaLM(cfg)
+    with torch.no_grad():
+        model.lm_head.weight.zero_()
+        model.lm_head.weight[3].fill_(10.0)
+        model.lm_head.weight[4].fill_(9.0)
+    input_ids = torch.tensor([[1, 2]])
+    out = generate(model, input_ids, max_new_tokens=1, temperature=0.0, suppress_token_ids=[3])
+    assert out[0, -1].item() != 3
+
+
+def test_generate_repetition_penalty_discourages_seen_tokens():
+    cfg = small_cfg(vocab_size=8)
+    model = TinyGemmaLM(cfg)
+    with torch.no_grad():
+        model.lm_head.weight.zero_()
+        model.lm_head.weight[3].fill_(10.0)
+        model.lm_head.weight[4].fill_(6.0)
+    input_ids = torch.tensor([[1, 3]])
+    out = generate(model, input_ids, max_new_tokens=1, temperature=0.0, repetition_penalty=2.0)
+    assert out[0, -1].item() == 4

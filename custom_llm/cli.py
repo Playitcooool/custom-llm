@@ -3,7 +3,13 @@ from pathlib import Path
 
 import torch
 
-from custom_llm.data.tokenizer import decode, encode, load_tokenizer, train_tokenizer
+from custom_llm.data.tokenizer import (
+    decode,
+    encode,
+    invalid_single_token_ids,
+    load_tokenizer,
+    train_tokenizer,
+)
 from custom_llm.data.fineweb_edu import (
     FINEWEB_EDU_CONFIG,
     FINEWEB_EDU_DATASET,
@@ -79,6 +85,10 @@ def main() -> None:
     sample.add_argument("--checkpoint", default=None)
     sample.add_argument("--prompt", required=True)
     sample.add_argument("--max-new-tokens", type=int, default=32)
+    sample.add_argument("--temperature", type=float, default=0.0)
+    sample.add_argument("--top-k", type=int, default=50)
+    sample.add_argument("--repetition-penalty", type=float, default=1.1)
+    sample.add_argument("--allow-invalid-bytes", action="store_true")
     sample.add_argument("--device", default="auto", choices=("auto", "cpu", "mps", "cuda"))
 
     args = parser.parse_args()
@@ -131,9 +141,22 @@ def main() -> None:
         print(f"device: {dev}")
         model = load_checkpoint(args.checkpoint, cfg) if args.checkpoint else TinyGemmaLM(cfg)
         model = model.to(dev)
-        ids = torch.tensor([encode(tokenizer, args.prompt, add_eos=False)], device=dev)
-        out = generate(model, ids, args.max_new_tokens)
-        print(decode(tokenizer, out[0].tolist()))
+        prompt_ids = encode(tokenizer, args.prompt, add_eos=False)
+        ids = torch.tensor([prompt_ids], device=dev)
+        eos_id = tokenizer.token_to_id("<eos>")
+        suppress_ids = None if args.allow_invalid_bytes else invalid_single_token_ids(tokenizer)
+        out = generate(
+            model,
+            ids,
+            max_new_tokens=args.max_new_tokens,
+            temperature=args.temperature,
+            top_k=args.top_k,
+            eos_id=eos_id,
+            suppress_token_ids=suppress_ids,
+            repetition_penalty=args.repetition_penalty,
+        )
+        generated_ids = out[0, len(prompt_ids) :].tolist()
+        print(decode(tokenizer, generated_ids))
 
 
 if __name__ == "__main__":

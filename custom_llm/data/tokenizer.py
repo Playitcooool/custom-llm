@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from tokenizers import ByteLevelBPETokenizer, Tokenizer
+from tokenizers.decoders import ByteLevel
 
 SPECIAL_TOKENS = ["<pad>", "<bos>", "<eos>", "<unk>", "<user>", "<assistant>"]
 
@@ -21,7 +22,10 @@ def load_tokenizer(path: str) -> Tokenizer:
         merges = path.parent / "merges.txt"
         tok = ByteLevelBPETokenizer(str(vocab), str(merges))
         tok.save(str(path))
-    return Tokenizer.from_file(str(path))
+    tokenizer = Tokenizer.from_file(str(path))
+    if tokenizer.decoder is None:
+        tokenizer.decoder = ByteLevel()
+    return tokenizer
 
 
 def encode(tokenizer: Tokenizer, text: str, add_bos: bool = True, add_eos: bool = True) -> list[int]:
@@ -37,3 +41,12 @@ def encode(tokenizer: Tokenizer, text: str, add_bos: bool = True, add_eos: bool 
 
 def decode(tokenizer: Tokenizer, ids: list[int]) -> str:
     return tokenizer.decode(ids, skip_special_tokens=True)
+
+
+def invalid_single_token_ids(tokenizer: Tokenizer) -> list[int]:
+    bad = []
+    for token_id in range(tokenizer.get_vocab_size()):
+        text = tokenizer.decode([token_id], skip_special_tokens=True)
+        if "\ufffd" in text:
+            bad.append(token_id)
+    return bad
