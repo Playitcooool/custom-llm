@@ -28,6 +28,46 @@ train:
   muon_ns_steps: 5
 ```
 
+## Config Reference
+
+Configs have two main sections: `model`, which builds the network, and `train`, which controls the training loop. See `configs/smoke.yaml` for a fast test preset and `configs/tiny.yaml` for a more realistic local baseline.
+
+### Model parameters
+
+- `vocab_size`: Number of token IDs the model can represent. Training raises this to at least the loaded tokenizer size when needed.
+- `n_layers`: Number of Transformer blocks.
+- `d_model`: Hidden width of the model. Token embeddings, attention outputs, residual connections, and final normalization all use this size.
+- `n_heads`: Number of query attention heads.
+- `n_kv_heads`: Number of key/value heads for grouped-query attention. `n_heads` must be divisible by `n_kv_heads`.
+- `intermediate_dim`: Inner width of the GeGLU-style MLP. Larger values increase capacity and compute.
+- `max_seq_len`: Maximum sequence length accepted by the model. Inputs longer than this raise an error.
+- `sliding_window`: Local attention window size for non-global layers. Global layers still attend to the full causal prefix.
+- `local_layers_per_global`: Frequency of global attention layers. Every Nth layer is global, and the final layer is always global.
+- `rope_theta`: Base frequency scale for RoPE positional encoding.
+- `rms_norm_eps`: Epsilon used by RMSNorm for numerical stability.
+- `qk_norm`: Enables RMSNorm on query and key vectors before RoPE and attention.
+- `ple_dim`: Width of the per-layer learned positional embedding before projection to `d_model`.
+- `use_ple`: Enables per-layer learned positional embeddings.
+- `dropout`: Dropout probability applied to attention probabilities.
+
+Derived constraint: `head_dim = d_model // n_heads`, so `d_model` must be divisible by `n_heads`.
+
+### Training parameters
+
+- `seq_len`: Sequence length used by the dataset packer. This should usually be less than or equal to `model.max_seq_len`.
+- `batch_size`: Number of sequences per optimizer step.
+- `steps`: Number of training iterations.
+- `lr`: Main learning rate. AdamW uses this directly; Muon uses it as the fallback AdamW learning rate unless `adamw_lr` is set.
+- `optimizer`: Optimizer name. Supported values are `adamw` and `muon`; default is `adamw`.
+- `weight_decay`: Weight decay for optimizer parameter groups. Defaults to `0.0`.
+- `adamw_lr`: Learning rate for AdamW parameters when using `optimizer: muon`.
+- `muon_lr`: Learning rate for 2D hidden-weight parameters trained with Muon.
+- `muon_momentum`: Momentum value for Muon.
+- `muon_ns_steps`: Number of Newton-Schulz orthogonalization steps used by Muon.
+- `muon_nesterov`: Enables Nesterov-style Muon momentum. Defaults to `true`.
+
+Practical rule: `model.max_seq_len` is the architectural limit, while `train.seq_len` is how much of that limit each training example uses.
+
 ## FineWeb-Edu Training
 
 FineWeb-Edu is the recommended first realistic dataset for this model. It is educational web text filtered from FineWeb and is much closer to real pretraining data than TinyStories. Prepare a bounded local sample, train a tokenizer on it, then pretrain from the resulting text file:
