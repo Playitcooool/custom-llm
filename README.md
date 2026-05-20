@@ -16,6 +16,18 @@ uv run custom-llm sample --config configs/smoke.yaml --tokenizer .artifacts/toke
 
 Training and sampling use `--device auto` by default. Auto picks CUDA first, then Apple MPS, then CPU. Override it with `--device mps` or `--device cpu` when needed.
 
+AdamW is the default optimizer. To try Muon for hidden 2D weights while keeping AdamW for embeddings, norms, and other fallback parameters, set it in the config:
+
+```yaml
+train:
+  optimizer: muon
+  lr: 0.0003
+  adamw_lr: 0.0003
+  muon_lr: 0.02
+  muon_momentum: 0.95
+  muon_ns_steps: 5
+```
+
 ## FineWeb-Edu Training
 
 FineWeb-Edu is the recommended first realistic dataset for this model. It is educational web text filtered from FineWeb and is much closer to real pretraining data than TinyStories. Prepare a bounded local sample, train a tokenizer on it, then pretrain from the resulting text file:

@@ -9,7 +9,9 @@ from custom_llm.data.fineweb_edu import write_text_rows
 from custom_llm.data.tinystories import extract_text_sample, is_gzip
 from custom_llm.data.tokenizer import load_tokenizer, train_tokenizer
 from custom_llm.model.checkpoints import load_checkpoint
+from custom_llm.model.model import TinyGemmaLM
 from custom_llm.train.distill import run_distill
+from custom_llm.train.optim import CombinedOptimizer, Muon, build_optimizer, uses_muon
 from custom_llm.train.pretrain import run_pretrain
 from custom_llm.train.sft import run_sft
 from custom_llm.train.utils import tiny_config_from_dict
@@ -128,6 +130,30 @@ def test_pretrain_can_restart_from_checkpoint(tmp_path):
     resumed = load_checkpoint(restarted, model_cfg)
     for key, value in original.state_dict().items():
         assert torch.equal(value, resumed.state_dict()[key])
+
+
+def test_muon_optimizer_partitions_hidden_matrix_weights():
+    cfg = tiny_config_from_dict(smoke_config())
+    model = TinyGemmaLM(cfg)
+    opt = build_optimizer(model, {"optimizer": "muon"})
+
+    assert isinstance(opt, CombinedOptimizer)
+    assert any(isinstance(inner, Muon) for inner in opt.optimizers)
+    routed = {name: uses_muon(name, param) for name, param in model.named_parameters()}
+    assert routed["layers.0.attn.q_proj.weight"]
+    assert routed["layers.0.mlp.down.weight"]
+    assert not routed["tok_embeddings.weight"]
+    assert not routed["norm.weight"]
+
+
+def test_pretrain_with_muon_optimizer(tmp_path):
+    text, tok_dir, tok = make_tokenizer(tmp_path)
+    cfg = smoke_config(vocab_size=tok.get_vocab_size())
+    cfg["train"]["optimizer"] = "muon"
+    cfg["train"]["muon_lr"] = 0.01
+    cfg["train"]["adamw_lr"] = 1e-3
+    cfg["train"]["muon_ns_steps"] = 2
+    run_pretrain(cfg, [str(text)], str(tok_dir), device_name="cpu")
 
 
 def test_loss_accepts_masked_labels():
