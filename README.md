@@ -27,6 +27,12 @@ uv run custom-llm pretrain --config configs/tiny.yaml --tokenizer .artifacts/tok
 uv run custom-llm sample --config configs/tiny.yaml --tokenizer .artifacts/tokenizer --checkpoint .artifacts/fineweb_edu.safetensors --prompt "Explain photosynthesis in simple terms:"
 ```
 
+Restart pretraining from an existing model checkpoint by passing `--restart-checkpoint`:
+
+```bash
+uv run custom-llm pretrain --config configs/tiny.yaml --tokenizer .artifacts/tokenizer --text data/fineweb_edu_100mb.txt --restart-checkpoint .artifacts/fineweb_edu.safetensors --out .artifacts/fineweb_edu_next.safetensors
+```
+
 Start with `--max-mb 100` to validate the pipeline. On a 24 GB Mac, increase toward `500-2000` MB once the run is stable.
 
 ## Layout

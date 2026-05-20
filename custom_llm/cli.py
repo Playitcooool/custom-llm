@@ -74,6 +74,7 @@ def main() -> None:
         p.add_argument("--device", default="auto", choices=("auto", "cpu", "mps", "cuda"))
         if name == "pretrain":
             p.add_argument("--text", nargs="+", required=True)
+            p.add_argument("--restart-checkpoint", default=None)
         elif name == "sft":
             p.add_argument("--jsonl", required=True)
         else:
@@ -116,6 +117,7 @@ def main() -> None:
             args.tokenizer,
             checkpoint_output_path(args.cmd, args.out),
             args.device,
+            args.restart_checkpoint,
         )
     elif args.cmd == "sft":
         run_sft(

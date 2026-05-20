@@ -8,9 +8,11 @@ from custom_llm.data.datasets import SFTDataset
 from custom_llm.data.fineweb_edu import write_text_rows
 from custom_llm.data.tinystories import extract_text_sample, is_gzip
 from custom_llm.data.tokenizer import load_tokenizer, train_tokenizer
+from custom_llm.model.checkpoints import load_checkpoint
 from custom_llm.train.distill import run_distill
 from custom_llm.train.pretrain import run_pretrain
 from custom_llm.train.sft import run_sft
+from custom_llm.train.utils import tiny_config_from_dict
 
 
 def smoke_config(vocab_size=128):
@@ -101,6 +103,31 @@ def test_one_step_pretrain_sft_distill(tmp_path):
     prompts = tmp_path / "prompts.txt"
     prompts.write_text("hello tiny model\n")
     run_distill(cfg, str(prompts), str(tok_dir))
+
+
+def test_pretrain_can_restart_from_checkpoint(tmp_path):
+    text, tok_dir, tok = make_tokenizer(tmp_path)
+    cfg = smoke_config(vocab_size=tok.get_vocab_size())
+    first = tmp_path / "first.safetensors"
+    restarted = tmp_path / "restarted.safetensors"
+
+    run_pretrain(cfg, [str(text)], str(tok_dir), out=str(first), device_name="cpu")
+    no_step_cfg = smoke_config(vocab_size=tok.get_vocab_size())
+    no_step_cfg["train"]["steps"] = 0
+    run_pretrain(
+        no_step_cfg,
+        [str(text)],
+        str(tok_dir),
+        out=str(restarted),
+        device_name="cpu",
+        restart_checkpoint=str(first),
+    )
+
+    model_cfg = tiny_config_from_dict(cfg)
+    original = load_checkpoint(first, model_cfg)
+    resumed = load_checkpoint(restarted, model_cfg)
+    for key, value in original.state_dict().items():
+        assert torch.equal(value, resumed.state_dict()[key])
 
 
 def test_loss_accepts_masked_labels():
